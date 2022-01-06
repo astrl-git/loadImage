@@ -11,7 +11,8 @@ namespace PngPreview
 {
     public class PngImagesController : MonoBehaviour
     {
-        private static TimeSpan _1_SEC = new TimeSpan(0, 0, 1);
+        private static readonly TimeSpan _1_SEC = new TimeSpan(0, 0, 1);
+        private static readonly SavedJSONPath<string[]> CACHED_PATHS_LIST = SavedJSONPath<string[]>.Create("CACHED_PATHS_LIST");
 
         [SerializeField] private Transform listContainer;
         [SerializeField] private PngPreviewItem itemPrefab;
@@ -33,12 +34,25 @@ namespace PngPreview
         {
             spawnedItems = new Dictionary<string, PngPreviewItem>();
             Timer = Observable.Interval(_1_SEC);
+
+            Init();
         }
 
         private void OnEnable()
         {
             addItem.onClick.AsObservable().TakeUntilDisable(gameObject).Subscribe(i => UploadImageFromGallery());
             refreshList.onClick.AsObservable().TakeUntilDisable(gameObject).Subscribe(i => RefreshList());
+        }
+
+        private void Init()
+        {
+            var paths = SavingUtil.LoadJSON(CACHED_PATHS_LIST);
+            if (paths == null) return;
+
+            foreach (var path in paths)
+            {
+                LoadImageByPath(path);
+            }
         }
 
         public void RemoveItem(string itemPath)
@@ -48,6 +62,7 @@ namespace PngPreview
                 Debug.Log($"RemovedItem: {itemPath}");
                 Destroy(item.gameObject);
                 spawnedItems.Remove(itemPath);
+                SavingUtil.SaveAsJSON(spawnedItems.Keys.ToArray(), CACHED_PATHS_LIST);
             }
         }
 
@@ -96,7 +111,11 @@ namespace PngPreview
 
         private void SpawnItem(PngPreviewItem.ImageData data)
         {
-            // var data = new PngPreviewItem.ImageData(imagePath, texture, DateTime.Now);
+            if (data == null)
+            {
+                Debug.LogError("Failed to spawn ImagePreview item due to data is null");
+                return;
+            }
 
             if (spawnedItems.TryGetValue(data.fullPath, out var alreadySpawnedItem))
             {
@@ -110,6 +129,7 @@ namespace PngPreview
 
                 spawnedItems.Add(data.fullPath, listItem);
                 Debug.Log($"SpawnedItem: {data.fullPath}");
+                SavingUtil.SaveAsJSON(spawnedItems.Keys.ToArray(), CACHED_PATHS_LIST);
             }
         }
 
@@ -125,7 +145,7 @@ namespace PngPreview
 
             if (File.Exists(imagePath) == false)
             {
-                Debug.LogError($"Failed to load file due to it doesn't exist");
+                Debug.LogError($"Failed to load file due to it doesn't exist. Path: {imagePath}");
                 return null;
             }
 
