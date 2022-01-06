@@ -57,7 +57,10 @@ namespace PngPreview
                         return;
                     }
 
-                    if (_controller != null) _controller.RemoveItem(_data?.fullPath);
+                    if (_controller != null)
+                    {
+                        _controller.RemoveItemAndSaveState(_data?.fullPath);
+                    }
                 });
         }
 

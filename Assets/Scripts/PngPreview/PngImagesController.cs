@@ -13,7 +13,9 @@ namespace PngPreview
     public class PngImagesController : MonoBehaviour
     {
         private static readonly TimeSpan _1_SEC = new TimeSpan(0, 0, 1);
+
         private static readonly SavedJSONPath<string[]> CACHED_PATHS_LIST = SavedJSONPath<string[]>.Create("CACHED_PATHS_LIST");
+
         // private static readonly string[] ALLOWED_EXTENSIONS = new[] {".png"};
         private static readonly string[] ALLOWED_EXTENSIONS = new[] {".png", ".jpg", ".jpeg"};
 
@@ -52,10 +54,24 @@ namespace PngPreview
             refreshList.onClick.AsObservable().TakeUntilDisable(gameObject).Subscribe(i => RefreshList());
         }
 
+        public void RemoveItemAndSaveState(string itemPath)
+        {
+            RemoveItem(itemPath);
+            SaveState();
+        }
+
         private void Init()
         {
             var paths = SavingUtil.LoadJSON(CACHED_PATHS_LIST);
-            if (paths == null) return;
+            if (paths == null || paths.Length < 1) return;
+
+            NativeGallery.Permission permission = NativeGallery.RequestPermission(NativeGallery.PermissionType.Read);
+
+            if (permission != NativeGallery.Permission.Granted)
+            {
+                permissionDeniedDialog.Show(permission);
+                return;
+            }
 
             foreach (var path in paths)
             {
@@ -63,14 +79,13 @@ namespace PngPreview
             }
         }
 
-        public void RemoveItem(string itemPath)
+        private void RemoveItem(string itemPath)
         {
             if (spawnedItems.TryGetValue(itemPath, out var item))
             {
                 Debug.Log($"RemovedItem: {itemPath}");
                 Destroy(item.gameObject);
                 spawnedItems.Remove(itemPath);
-                SavingUtil.SaveAsJSON(spawnedItems.Keys.ToArray(), CACHED_PATHS_LIST);
             }
         }
 
@@ -92,19 +107,30 @@ namespace PngPreview
                     var data = LoadPNGImage(imagePath);
 
                     SpawnItem(data);
+                    SaveState();
                 }
             });
         }
 
         private void RefreshList()
         {
+            NativeGallery.Permission permission = NativeGallery.RequestPermission(NativeGallery.PermissionType.Read);
+
+            if (permission != NativeGallery.Permission.Granted)
+            {
+                permissionDeniedDialog.Show(permission);
+                return;
+            }
+
             var pathList = spawnedItems.Select(i => i.Key).ToArray();
             foreach (var path in pathList)
             {
                 RemoveItem(path);
             }
 
-            foreach (var path in pathList)
+            var pathsFromCache = SavingUtil.LoadJSON(CACHED_PATHS_LIST);
+
+            foreach (var path in pathsFromCache)
             {
                 LoadImageByPath(path);
             }
@@ -123,6 +149,7 @@ namespace PngPreview
             var data = LoadPNGImage(imagePath);
 
             SpawnItem(data);
+            SaveState();
         }
 
         private void SpawnItem(PngPreviewItem.ImageData data)
@@ -145,7 +172,6 @@ namespace PngPreview
 
                 spawnedItems.Add(data.fullPath, listItem);
                 Debug.Log($"SpawnedItem: {data.fullPath}");
-                SavingUtil.SaveAsJSON(spawnedItems.Keys.ToArray(), CACHED_PATHS_LIST);
             }
         }
 
@@ -172,6 +198,11 @@ namespace PngPreview
 
             var createdDate = File.GetCreationTime(imagePath);
             return new PngPreviewItem.ImageData(imagePath, texture, createdDate.ToUniversalTime());
+        }
+
+        private void SaveState()
+        {
+            SavingUtil.SaveAsJSON(spawnedItems.Keys.ToArray(), CACHED_PATHS_LIST);
         }
     }
 }
