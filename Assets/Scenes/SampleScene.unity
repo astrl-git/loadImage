@@ -430,8 +430,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7baddbda1a94d95b90fa393bf48f6b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  okButton: {fileID: 606924105}
   messageText: {fileID: 1966209004}
+  okButton: {fileID: 606924105}
 --- !u!114 &381113786
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2325,9 +2325,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b1c439cbbd8c4170ba8ac5b655e17a2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  message: {fileID: 0}
-  openSettings: {fileID: 0}
-  requestPermission: {fileID: 0}
+  message: {fileID: 2115470588}
+  openSettings: {fileID: 1728330420}
+  requestPermission: {fileID: 1729586693}
 --- !u!114 &2023381288
 MonoBehaviour:
   m_ObjectHideFlags: 0
