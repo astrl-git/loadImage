@@ -71,8 +71,9 @@ namespace PngPreview
 
             _data = data;
             _controller = controller;
-            _controller.Timer.TakeUntilDisable(gameObject).Subscribe(Tick);
+            _controller.Timer.TakeUntilDisable(gameObject).Subscribe(i => Tick());
 
+            Tick();
             SetUIAccordingToData(_data);
         }
 
@@ -88,7 +89,7 @@ namespace PngPreview
             SetUIAccordingToData(_data);
         }
 
-        private void Tick(long _)
+        private void Tick()
         {
             if (_data?.createdDate == default) return;
 
@@ -96,7 +97,6 @@ namespace PngPreview
             var timespan = utcNow - _data.createdDate.ToUniversalTime();
             var res = timespan.ToString(FORMAT);
 
-            if (_ % 10 == 0) Debug.Log($"utcNow: {utcNow} - _data.CreatedDate.ToUniversalTime(): {_data.createdDate.ToUniversalTime()} = res:{res}");
             createdTimer.text = res;
         }
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using PngPreview.Dialogs;
 using UniRx;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -13,11 +14,15 @@ namespace PngPreview
     {
         private static readonly TimeSpan _1_SEC = new TimeSpan(0, 0, 1);
         private static readonly SavedJSONPath<string[]> CACHED_PATHS_LIST = SavedJSONPath<string[]>.Create("CACHED_PATHS_LIST");
+        // private static readonly string[] ALLOWED_EXTENSIONS = new[] {".png"};
+        private static readonly string[] ALLOWED_EXTENSIONS = new[] {".png", ".jpg", ".jpeg"};
 
         [SerializeField] private Transform listContainer;
         [SerializeField] private PngPreviewItem itemPrefab;
         [SerializeField] private Button addItem;
         [SerializeField] private Button refreshList;
+        [SerializeField] private ErrorDialog errorDialog;
+        [SerializeField] private PermissionDeniedDialog permissionDeniedDialog;
 
         private Dictionary<string, PngPreviewItem> spawnedItems;
 
@@ -25,9 +30,12 @@ namespace PngPreview
 
         private void OnValidate()
         {
+            Assert.IsNotNull(listContainer, $"{nameof(listContainer)} is null");
             Assert.IsNotNull(itemPrefab, $"{nameof(itemPrefab)} is null");
             Assert.IsNotNull(addItem, $"{nameof(addItem)} is null");
             Assert.IsNotNull(refreshList, $"{nameof(refreshList)} is null");
+            Assert.IsNotNull(errorDialog, $"{nameof(errorDialog)} is null");
+            Assert.IsNotNull(permissionDeniedDialog, $"{nameof(permissionDeniedDialog)} is null");
         }
 
         private void Awake()
@@ -68,6 +76,14 @@ namespace PngPreview
 
         private void UploadImageFromGallery()
         {
+            NativeGallery.Permission permission = NativeGallery.RequestPermission(NativeGallery.PermissionType.Read);
+
+            if (permission != NativeGallery.Permission.Granted)
+            {
+                permissionDeniedDialog.Show(permission);
+                return;
+            }
+
             NativeGallery.GetImageFromGallery((imagePath) =>
             {
                 Debug.Log($"Image path: {imagePath}");
@@ -100,7 +116,7 @@ namespace PngPreview
 
             if (permission != NativeGallery.Permission.Granted)
             {
-                Debug.LogError($"Failed to load file data due to permission is {imagePath}");
+                permissionDeniedDialog.Show(permission);
                 return;
             }
 
@@ -135,13 +151,14 @@ namespace PngPreview
 
         private PngPreviewItem.ImageData LoadPNGImage(string imagePath)
         {
-            // TODO UNCOMMENT TO LOAD ONLY .PNG
-            // var extension = Path.GetExtension(imagePath).ToLowerInvariant();
-            // if (extension != ".png")
-            // {
-            //     Debug.LogError($"Failed to load file due to it's extension is not a .png");
-            //     return null;
-            // }
+            var extension = Path.GetExtension(imagePath).ToLowerInvariant();
+            if (ALLOWED_EXTENSIONS.Contains(extension) == false)
+            {
+                var msg = $"Failed to load file due to it's extension is: {extension} expected: {string.Join(", ", ALLOWED_EXTENSIONS)}";
+                Debug.LogError(msg);
+                errorDialog.Show(msg);
+                return null;
+            }
 
             if (File.Exists(imagePath) == false)
             {
